@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: microsocial-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: microsocial
+      MONGO_INITDB_ROOT_PASSWORD: microsocial
+    networks:
+      - microsocial-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: microsocial-backend
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://microsocial:microsocial@cluster0.jwsdfmz.mongodb.net/?appName=Cluster0
+      - JWT_SECRET=jwt_secret
+      - JWT_EXPIRE=7d
+      - FRONTEND_URL=http://localhost:8081
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - microsocial-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: microsocial-frontend
+    restart: always
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ALL=true
+      - API_URL=http://host.docker.internal:4000
+    depends_on:
+      - backend
+    networks:
+      - microsocial-net
+
+volumes:
+  mongodb_data:
+
+networks:
+  microsocial-net:
+    driver: bridge
