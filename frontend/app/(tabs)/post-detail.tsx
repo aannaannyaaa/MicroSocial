@@ -24,6 +24,7 @@ import {
   SPACING,
   BORDER_RADIUS,
 } from '../../src/utils/constants';
+import  CommentsSection from '../../src/components/comment';
 
 export default function PostDetailScreen() {
   const router = useRouter();
@@ -48,14 +49,10 @@ export default function PostDetailScreen() {
         return;
       }
 
-      const response: PostResponse = await postsService.getPostById(postId);
+      const response: PostResponse = await postsService.getPostById(postId as string);
 
       if (response.success && response.data) {
-        const postWithLikeStatus = {
-          ...response.data,
-          isLiked: response.data.likes.includes(user?._id || ''),
-        };
-        setPost(postWithLikeStatus);
+        setPost(response.data);
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to load post';
@@ -70,25 +67,18 @@ export default function PostDetailScreen() {
 
     try {
       setLiking(true);
-
-      if (post.isLiked) {
-        await postsService.unlikePost(post._id);
-      } else {
-        await postsService.likePost(post._id);
-      }
-
-      setPost((prevPost) => {
-        if (!prevPost) return null;
-        return {
-          ...prevPost,
-          isLiked: !prevPost.isLiked,
-          likesCount: prevPost.isLiked
-            ? prevPost.likesCount - 1
-            : prevPost.likesCount + 1,
-        };
+      
+      // Call toggle endpoint
+      const result = await postsService.toggleLike(post._id);
+      
+      // Update local state with server response
+      setPost({
+        ...post,
+        isLiked: result.isLiked,
+        likesCount: result.likeCount,
       });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to like post');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to toggle like');
     } finally {
       setLiking(false);
     }
@@ -125,7 +115,6 @@ export default function PostDetailScreen() {
       height: 50,
       borderRadius: 25,
       marginRight: SPACING.md,
-      backgroundColor: COLORS.primary,
     },
     authorInfo: {
       flex: 1,
@@ -152,13 +141,6 @@ export default function PostDetailScreen() {
       fontSize: FONT_SIZES.base,
       color: COLORS.text,
       lineHeight: 24,
-      marginBottom: post?.image ? SPACING.md : 0,
-    },
-    image: {
-      width: '100%',
-      height: 400,
-      borderRadius: BORDER_RADIUS.md,
-      backgroundColor: COLORS.surface,
     },
     statsSection: {
       flexDirection: 'row',
@@ -257,9 +239,6 @@ export default function PostDetailScreen() {
           {/* Content */}
           <View style={styles.content}>
             <Text style={styles.contentText}>{post.content}</Text>
-            {post.image && (
-              <Image source={{ uri: post.image }} style={styles.image} />
-            )}
           </View>
 
           {/* Stats */}
@@ -297,7 +276,7 @@ export default function PostDetailScreen() {
                   post.isLiked && styles.actionTextActive,
                 ]}
               >
-                Like
+                {post.isLiked ? 'Unlike' : 'Like'}
               </Text>
             </TouchableOpacity>
 
@@ -311,6 +290,16 @@ export default function PostDetailScreen() {
               <Text style={styles.actionText}>Share</Text>
             </TouchableOpacity>
           </View>
+
+          {post && (
+            <CommentsSection
+              postId={post._id}
+              postCommentCount={post.commentsCount}
+              onCommentCountChange={(count: any) =>
+                setPost(prev => prev ? { ...prev, commentsCount: count } : null)
+              }
+            />
+          )}
         </View>
       </ScrollView>
     </SafeArea>

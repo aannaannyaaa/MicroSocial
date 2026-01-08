@@ -28,8 +28,8 @@ app.get("/health", (_req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/posts", postRoutes);
-app.use("/like", likeRoutes);
-app.use("/comment", commentRoutes);
+app.use("/likes", likeRoutes);
+app.use("/comments", commentRoutes);
 app.use("/user", userRoutes)
 
 app.use((_req, res) => {

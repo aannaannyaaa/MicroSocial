@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from "react";
 import {
   View,
   FlatList,
   StyleSheet,
   RefreshControl,
   Alert,
-  Platform,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../src/context/AuthContext';
-import { postsService } from '../../src/services/posts';
-import { Post, FeedResponse } from '../../src/types';
-import { PostCard } from '../../src/components/PostCard';
-import { Loading } from '../../src/components/Loading';
-import { ErrorMessage } from '../../src/components/ErrorMessage';
-import { SafeArea } from '../../src/components/SafeArea';
-import { COLORS, SIZES } from '../../src/utils/constants';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../../src/context/AuthContext";
+import { postsService } from "../../src/services/posts";
+import { Post, FeedResponse } from "../../src/types";
+import { PostCard } from "../../src/components/PostCard";
+import { Loading } from "../../src/components/Loading";
+import { ErrorMessage } from "../../src/components/ErrorMessage";
+import { SafeArea } from "../../src/components/SafeArea";
+import { COLORS, SIZES } from "../../src/utils/constants";
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -49,9 +48,12 @@ export default function FeedScreen() {
       const response: FeedResponse = await postsService.getFeed(pageNum, 10);
 
       if (response.success) {
-        const postsWithLikeStatus = response.data.map((post) => ({
+        const postsData = response.data.data;
+        const pagination = response.data.pagination;
+
+        const postsWithLikeStatus = postsData.map((post) => ({
           ...post,
-          isLiked: post.likes.includes(user?._id || ''),
+          isLiked: post.isLiked ?? false,
         }));
 
         if (refresh) {
@@ -62,13 +64,14 @@ export default function FeedScreen() {
           setPage(pageNum + 1);
         }
 
-        setHasMore(pageNum < response.pagination.pages);
+        setHasMore(pageNum < pagination.pages);
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to load feed';
+      const errorMessage =
+        err.response?.data?.error || err.message || "Failed to load feed";
       setError(errorMessage);
       if (refresh) {
-        Alert.alert('Error', errorMessage);
+        Alert.alert("Error", errorMessage);
       }
     } finally {
       setLoading(false);
@@ -101,7 +104,7 @@ export default function FeedScreen() {
         })
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to like post');
+      Alert.alert("Error", "Failed to like post");
     } finally {
       setLiking(null);
     }
@@ -111,9 +114,9 @@ export default function FeedScreen() {
     try {
       await postsService.deletePost(postId);
       setPosts((prev) => prev.filter((p) => p._id !== postId));
-      Alert.alert('Success', 'Post deleted successfully');
+      Alert.alert("Success", "Post deleted successfully");
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete post');
+      Alert.alert("Error", "Failed to delete post");
     }
   };
 
@@ -142,7 +145,11 @@ export default function FeedScreen() {
   if (error && posts.length === 0) {
     return (
       <SafeArea style={styles.safeArea}>
-        <ErrorMessage message={error} onRetry={() => loadFeed(true)} fullScreen />
+        <ErrorMessage
+          message={error}
+          onRetry={() => loadFeed(true)}
+          fullScreen
+        />
       </SafeArea>
     );
   }
@@ -155,10 +162,12 @@ export default function FeedScreen() {
         renderItem={({ item }) => (
           <PostCard
             post={item}
-            onPress={() => router.push({
-              pathname: '/post-detail',
-              params: { postId: item._id },
-            })}
+            onPress={() =>
+              router.push({
+                pathname: "/post-detail",
+                params: { postId: item._id },
+              })
+            }
             onLike={handleLike}
             onDelete={handleDeletePost}
             currentUserId={user?._id}

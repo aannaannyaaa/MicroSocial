@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { Post, FeedResponse, PostResponse, LikeResponse } from '../types';
+import { AddCommentResponse, CommentResponse, FeedResponse, PostResponse } from '../types';
 
 export const postsService = {
   // Feed - paginated posts
@@ -16,7 +16,7 @@ export const postsService = {
     return response.data;
   },
 
-  // Create text post (text-only)
+  // Create text post
   async createPost(content: string): Promise<PostResponse> {
     const response = await apiClient.post<PostResponse>('/posts', {
       content: content.trim(),
@@ -38,22 +38,37 @@ export const postsService = {
     return response.data;
   },
 
-  // Like/unlike posts
-  async likePost(postId: string): Promise<LikeResponse> {
-    const response = await apiClient.post<LikeResponse>('/likes', { post: postId });
-    return response.data;
-  },
-
-  async unlikePost(postId: string): Promise<{ success: boolean }> {
-    const response = await apiClient.delete<{ success: boolean }>(`/likes/${postId}`);
+  // Toggle like/unlike (single endpoint)
+  async toggleLike(postId: string): Promise<{ postId: string; isLiked: boolean; likeCount: number }> {
+    const response = await apiClient.post<{ postId: string; isLiked: boolean; likeCount: number }>(
+      `/likes/${postId}`
+    );
     return response.data;
   },
 
   // User posts
-  async getUserPosts(userId: string, page: number = 1): Promise<FeedResponse> {
+  async getUserPosts(userId: string, page: number = 1, limit: number = 10): Promise<FeedResponse> {
     const response = await apiClient.get<FeedResponse>(`/posts/user/${userId}`, {
-      params: { page, limit: 10 },
+      params: { page, limit },
     });
+    return response.data;
+  },
+  async getComments(postId: string, page: number = 1, limit: number = 10): Promise<CommentResponse> {
+    const response = await apiClient.get<CommentResponse>(`/comments/${postId}`, {
+      params: { page, limit },
+    });
+    return response.data;
+  },
+
+  async addComment(postId: string, content: string): Promise<AddCommentResponse> {
+    const response = await apiClient.post<AddCommentResponse>(`/comments/${postId}`, {
+      content: content.trim(),
+    });
+    return response.data;
+  },
+
+  async deleteComment(commentId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete<{ success: boolean }>(`/comments/${commentId}`);
     return response.data;
   },
 };
